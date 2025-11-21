@@ -5,13 +5,70 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiOkResponse,
+} from '@nestjs/swagger';
 import { StatisticsService } from './services/statistics.service';
 
+@ApiTags('statistics')
 @Controller('statistics')
 export class StatisticsController {
   constructor(private readonly statisticsService: StatisticsService) {}
 
   @Get('year')
+  @ApiOperation({
+    summary: 'Get year statistics',
+    description:
+      'Get comprehensive statistics for a specific year and league, including league table, match statistics, and team performance',
+  })
+  @ApiQuery({
+    name: 'year',
+    required: true,
+    description: 'Year (2000-2100)',
+    example: '2023',
+  })
+  @ApiQuery({
+    name: 'leagueId',
+    required: true,
+    description: 'League ID (4335 for La Liga, 4346 for MLS)',
+    example: '4335',
+  })
+  @ApiOkResponse({
+    description: 'Year statistics including league table and match data',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            leagueTable: { type: 'array' },
+            totalMatches: { type: 'number' },
+            totalGoals: { type: 'number' },
+            averageGoalsPerMatch: { type: 'number' },
+            homeWins: { type: 'number' },
+            awayWins: { type: 'number' },
+            draws: { type: 'number' },
+          },
+        },
+        meta: {
+          type: 'object',
+          properties: {
+            year: { type: 'string' },
+            leagueId: { type: 'number' },
+            season: { type: 'string' },
+            totalTeams: { type: 'number' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid year or leagueId parameter' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   async getYearStatistics(
     @Query('year') year: string,
     @Query('leagueId') leagueId: string,

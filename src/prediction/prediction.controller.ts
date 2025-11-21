@@ -9,6 +9,14 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiOkResponse,
+} from '@nestjs/swagger';
+import {
   PredictionService,
   PredictionQuery,
 } from './services/prediction.service';
@@ -29,11 +37,66 @@ export class MatchPredictionRequestDto {
   conversationId?: string; // Optional: Conversation ID for follow-up questions
 }
 
+@ApiTags('prediction')
 @Controller('prediction')
 export class PredictionController {
   constructor(private readonly predictionService: PredictionService) {}
 
   @Post('ask')
+  @ApiOperation({
+    summary: 'Ask a prediction question',
+    description:
+      'Ask any question about match predictions using historical data. Supports filtering by league, season, teams, etc.',
+  })
+  @ApiBody({
+    description: 'Prediction query with question and optional filters',
+    schema: {
+      type: 'object',
+      required: ['question'],
+      properties: {
+        question: {
+          type: 'string',
+          description: 'Your question about match predictions',
+          example: 'What is the probability of a home win?',
+        },
+        leagueId: {
+          type: 'string',
+          description: 'League ID (4335 for La Liga, 4346 for MLS)',
+          example: '4335',
+        },
+        season: { type: 'string', description: 'Season filter', example: '2023-24' },
+        homeTeam: { type: 'string', description: 'Home team filter', example: 'Barcelona' },
+        awayTeam: { type: 'string', description: 'Away team filter', example: 'Real Madrid' },
+        limit: {
+          type: 'number',
+          description: 'Limit number of historical matches (1-500)',
+          example: 150,
+          minimum: 1,
+          maximum: 500,
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Prediction answer with matches used',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            answer: { type: 'string' },
+            matchesUsed: { type: 'number' },
+            cached: { type: 'boolean' },
+            query: { type: 'object' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid request parameters' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   async askPrediction(@Body() dto: PredictionRequestDto) {
     const { leagueId, season, homeTeam, awayTeam, limit, question } = dto;
 
@@ -94,6 +157,73 @@ export class PredictionController {
   }
 
   @Post('predict-match')
+  @ApiOperation({
+    summary: 'Predict match outcome',
+    description:
+      'Get AI-powered predictions for upcoming matches. Provide match data and ask questions about outcomes, weather impact, team performance, etc.',
+  })
+  @ApiBody({
+    description: 'Match prediction request with upcoming matches and question',
+    schema: {
+      type: 'object',
+      required: ['matches', 'question'],
+      properties: {
+        matches: {
+          type: 'array',
+          description: 'Array of upcoming match objects',
+          items: {
+            type: 'object',
+            required: ['idLeague', 'strHomeTeam', 'strAwayTeam'],
+            properties: {
+              idLeague: { type: 'string', example: '4335' },
+              strHomeTeam: { type: 'string', example: 'Barcelona' },
+              strAwayTeam: { type: 'string', example: 'Real Madrid' },
+              strVenue: { type: 'string', example: 'Camp Nou' },
+              dateEvent: { type: 'string', example: '2024-01-15' },
+            },
+          },
+        },
+        question: {
+          type: 'string',
+          description: 'Your question about the match prediction',
+          example: 'What is the predicted outcome considering weather conditions?',
+        },
+        limit: {
+          type: 'number',
+          description: 'Limit number of historical matches (1-500)',
+          example: 150,
+          minimum: 1,
+          maximum: 500,
+        },
+        conversationId: {
+          type: 'string',
+          description: 'Conversation ID for follow-up questions',
+          example: 'conv_123456',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Match prediction with answer and conversation ID',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            answer: { type: 'string' },
+            matchesUsed: { type: 'number' },
+            cached: { type: 'boolean' },
+            conversationId: { type: 'string' },
+            upcomingMatches: { type: 'array' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid request parameters' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   async predictMatch(@Body() dto: MatchPredictionRequestDto) {
     const { matches, question, limit } = dto;
 
@@ -172,6 +302,37 @@ export class PredictionController {
   }
 
   @Get('conversation/:conversationId')
+  @ApiOperation({
+    summary: 'Get conversation details',
+    description: 'Retrieve details of a prediction conversation by ID',
+  })
+  @ApiParam({
+    name: 'conversationId',
+    description: 'Conversation ID',
+    example: 'conv_123456',
+  })
+  @ApiOkResponse({
+    description: 'Conversation details',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            conversationId: { type: 'string' },
+            matches: { type: 'array' },
+            messagesCount: { type: 'number' },
+            matchesUsed: { type: 'number' },
+            createdAt: { type: 'string' },
+            lastActivity: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   async getConversation(@Param('conversationId') conversationId: string) {
     try {
       const conversation =
@@ -207,6 +368,26 @@ export class PredictionController {
   }
 
   @Delete('conversation/:conversationId')
+  @ApiOperation({
+    summary: 'Delete conversation',
+    description: 'Delete a prediction conversation by ID',
+  })
+  @ApiParam({
+    name: 'conversationId',
+    description: 'Conversation ID to delete',
+    example: 'conv_123456',
+  })
+  @ApiOkResponse({
+    description: 'Conversation deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   async deleteConversation(@Param('conversationId') conversationId: string) {
     try {
       await this.predictionService.deleteConversation(conversationId);
