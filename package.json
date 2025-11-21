@@ -28,6 +28,7 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/mongoose": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/swagger": "^7.4.2",
     "@upstash/redis": "^1.35.6",
     "axios": "^1.6.0",
     "cache-manager": "^7.2.5",
@@ -36,7 +37,8 @@
     "mongoose": "^8.0.0",
     "openai": "^6.9.1",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
