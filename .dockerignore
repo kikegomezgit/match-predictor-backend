@@ -1,0 +1,15 @@
+node_modules
+coverage
+.env
+.env.local
+*.log
+.git
+.gitignore
+.vscode
+.idea
+*.md
+!README.md
+!DEPLOYMENT.md
+# Note: dist is NOT ignored because it's needed for COPY --from=builder
+# The dist folder will be created during build inside the container
+
